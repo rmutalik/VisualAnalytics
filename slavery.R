@@ -1,9 +1,34 @@
 library(tidyverse)
 library(ggforce)
+library(plotly)
 
 # Please note that there is missing data for many of the voyages, where this database only contains details for approximately 5 million enslaved Africans who arrived alive at the final port. Many slaves died in transport, or the details around the slave voyage were not fully recorded.
 
 slave_routes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-06-16/slave_routes.csv')
+world_cities <- readr::read_csv('./data/worldcities.csv')
+origin_countries <- readr::read_csv('./data/slave_origin_countries.csv')
+
+world_cities <- world_cities[,c(1,3:5)]
+geo_ports <- merge(x=slave_routes, y=world_cities,by.x="port_origin",by.y="city",all.x=TRUE)
+summary(geo_ports)
+geo_ports <- merge(x=geo_ports, y=origin_countries,by="country",all=TRUE)
+
+
+# map projection
+geo <- list(
+  scope = 'world',
+  projection = list(type = 'equirectangular'),
+  showland = TRUE,
+  landcolor = toRGB("gray95"),
+  countrycolor = toRGB("gray80")
+)
+
+fig <- plot_geo(locationmode = 'country names', color = I("red"))
+fig <- fig %>% add_markers(
+  data = geo_ports, x = ~lng, y = ~lat, text = ~port_origin,
+  hoverinfo = "text", alpha = 0.5
+)
+fig
 
 decade_routes <- slave_routes %>% 
   mutate(
@@ -12,14 +37,17 @@ decade_routes <- slave_routes %>%
   group_by(decade) %>% 
   mutate(total = sum(n_slaves_arrived, na.rm = TRUE)) %>% 
   ungroup() %>% 
-  distinct(decade, total) %>% 
+  distinct(decade, total)
+cumsum_by_decade <- decade_routes[order(decade_routes$decade),] %>%
+  mutate(cumulative_total = cumsum(total))
+decade_routes <- decade_routes %>%
   mutate(links_n = round(total / 10^4)) %>% 
   rowwise() %>% 
   mutate(link_y = list(c(seq(0, links_n)))) %>% 
   ungroup() %>% 
   unnest(link_y)
 
-ggplot(decade_routes) +
+g <- ggplot(decade_routes) +
   # Links I O
   geom_ellipse(aes(x0 = decade, y0 = -link_y, a = 0.65, b = 1.2 * link_y %% 2, angle = pi / 2, m1 = 3), size = 0.7, colour = "white") +
   # Shadows for I links
@@ -43,4 +71,19 @@ ggplot(decade_routes) +
     axis.text.y = element_text(colour = "red", family = "DIN Condensed Bold", hjust = 0, size = 8, margin = margin(0, 0, 0, 5)),
     plot.margin = margin(20, 20, 20, 20)
   ) +
-  ggsave(here::here("2020-week25", "plots", "slavery.png")), dpi = 320)
+  # ggsave(here::here("slavery.png"), dpi = 320)
+
+  # Cumulative Total by Decade
+  geom_text(data = cumsum_by_decade, aes(x = decade, y = 0, label = cumulative_total), size = 2, colour = "white")
+
+g
+
+ggplotly(g, tooltip = c("text", "cumsum_by_decade$decade", 
+                        "cumsum_by_decade$cumulative_total"))
+
+# ggplotly(g) %>%
+#   add_trace(
+#     # values = cumsum_by_decade$total,
+#     labels = cumsum_by_decade$decade,
+#     text = cumsum_by_decade$cumulative_total,
+#     hovertemplate = "%{label}: <br>%{text}")
