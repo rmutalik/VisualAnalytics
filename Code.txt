@@ -1,0 +1,80 @@
+---
+title: "TidyTuesday"
+output: 
+  flexdashboard::flex_dashboard:
+  runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(lubridate)
+library(chron)
+library(ggthemes)
+library(leaflet)
+library(RColorBrewer)
+```
+
+```{r global}
+individuals <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-06-23/individuals.csv')
+
+locations <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-06-23/locations.csv')
+```
+
+```{r}
+#Separate the timestamp column into year, month, day, time columns.
+
+locations_timeformatted <- locations %>% 
+  mutate(yeartaken = year(timestamp),
+         month = month(timestamp),
+         day = day(timestamp),
+         time = chron::times(strftime(timestamp,"%H:%M:%S", tz = "UTC")))
+
+locations_map <- locations_timeformatted %>% 
+  filter(yeartaken == 2010:2016,
+         season == "Winter")
+```
+
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+checkboxGroupInput("year", "Year:",
+                     c(2010, 2011, 2012, 2013, 2014, 2015, 2016))
+sliderInput("month", "Month:",min = 1, max = 12, value = 1)
+checkboxGroupInput("study", "Study Site:",
+                     c("Moberly", "Kennedy", "Burnt Pine", "Scott", "Graham", "Quintette", "Narraway"))
+```
+
+
+```{r}
+#Set color palate to use in leaflet addCircleMarkers to identify study_site.
+pal <- colorFactor(
+  palette = 'Dark2',
+  domain = locations_map$study_site)
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Caribou Migrations
+
+```{r}
+# renderPlot({
+leaflet(locations_map) %>% 
+  addTiles() %>% 
+  addCircleMarkers(lat = ~latitude,
+                   lng = ~longitude,
+                   popup = paste("<b>Animal_ID:</b>", locations_map$animal_id,"</br>",
+                                 "<b>Study Site:</b>", locations_map$study_site, "</br>",
+                                 "<b>Timestamp:</b>", locations_map$timestamp),
+                   color = ~pal(study_site))
+# })
+```
+```
+
