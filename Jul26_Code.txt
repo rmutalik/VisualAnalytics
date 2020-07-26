@@ -1,0 +1,54 @@
+---
+title: "TidyTuesday"
+output: 
+  flexdashboard::flex_dashboard:
+  runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(lubridate)
+library(chron)
+library(ggthemes)
+library(leaflet)
+library(RColorBrewer)
+```
+
+```{r global}
+Slave_Trades <- readr::read_csv('Data_with_Years_Grouped.csv')
+```
+
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+checkboxGroupInput("Year_Grouped", "Year_Grouped:",
+                     c("1500's", "1600's", "1700's", "1800's"))
+```
+
+```{r}
+#Set color palate to use in leaflet addCircleMarkers to identify study_site.
+
+# pal <- colorFactor(
+#   palette = 'Dark2',
+#   domain = locations_map$study_site)
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Caribou Migrations
+
+```{r}
+m <- leaflet() %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addMarkers(lng=lng, lat=lat)
+m  # Print the map
+
+```
