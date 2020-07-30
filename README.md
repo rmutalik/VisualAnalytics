@@ -1,2 +1,3 @@
-# VisualAnalytics
-Midterm/Final Project
+# Visual Analytics
+
+https://rmutalik.shinyapps.io/final_project/
